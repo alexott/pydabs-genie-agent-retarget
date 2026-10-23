@@ -1,6 +1,6 @@
 [project]
 name = "pydabs-genie-agent-retarget"
-version = "0.1.2"
+version = "0.2.0"
 description = "Rewrite Unity Catalog references in Genie Agent (Genie space) definitions; a PyDABs mutator for Declarative Automation Bundles"
 readme = "README.md"
 authors = [

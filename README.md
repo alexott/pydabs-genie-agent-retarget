@@ -14,18 +14,25 @@ specs, SQL snippets, example and benchmark SQL, and text instructions.
 `genie_agent_retarget` is a Python mutator for DABs that rewrites all of them per target
 with prefix rules:
 
-| Rule level | Example                                              |
-|------------|------------------------------------------------------|
-| table      | `main.intel.oss_iocs: ${var.catalog}.intel.iocs`     |
-| schema     | `main.gold: ${var.catalog}.${var.gold_schema}`       |
-| catalog    | `main: ${var.catalog}`                               |
+| Rule level      | Example                                              |
+|-----------------|------------------------------------------------------|
+| table or volume | `main.intel.oss_iocs: ${var.catalog}.intel.iocs`     |
+| schema          | `main.gold: ${var.catalog}.${var.gold_schema}`       |
+| catalog         | `main: ${var.catalog}`                               |
 
 The most specific rule wins, and each name is rewritten once (rules never chain). Matching
 is case-insensitive and handles backtick-quoted names, in the space and in the rules. A
 rule whose two sides have a different number of parts fails `databricks bundle validate`.
 
-After a rewrite, the mutator sorts `data_sources.tables` by identifier, because the Genie
-API rejects an unsorted list. If a table rule renames a table, the mutator also renames
+The same rules apply to Unity Catalog volume paths: in volume data sources
+(`data_sources.volumes[].path`, used by [Genie Agents that read files in
+volumes](https://docs.databricks.com/aws/en/genie-agents/volumes)) and in any text or SQL,
+`/Volumes/<catalog>/<schema>/<volume>/...` is matched as the name `catalog.schema.volume`.
+With `main.gold: dev.gold_v2`, `/Volumes/main/gold/raw/` becomes `/Volumes/dev/gold_v2/raw/`.
+A 3-part rule renames a table or a volume with that name.
+
+After a rewrite, the mutator sorts `data_sources.tables` by identifier and
+`data_sources.volumes` by path, because the Genie API rejects an unsorted list. If a table rule renames a table, the mutator also renames
 the short table qualifiers in SQL fields: join specs, SQL snippets (filters, measures,
 expressions), example SQL, and benchmark SQL (`oss_iocs.ioc_type = 'URL'` becomes
 `iocs.ioc_type = 'URL'`). It skips a short name that another table of the space also has,
@@ -131,8 +138,8 @@ different workspaces.
   first time.
 - The mutator changes only table references. Set other values of the space, such as the
   warehouse ID, with fields of the resource declaration and bundle variables.
-- Only tables, schemas, and catalogs are retargeted. Other data sources, such as Unity
-  Catalog volumes, are not supported yet.
+- Tables, volumes, schemas, and catalogs are retargeted. Other data sources (for example,
+  MCP connections) are not changed.
 - `databricks bundle generate genie-space --watch` downloads the deployed definition. If
   you edit the space in a target that uses other table names, the downloaded file
   contains those names. Edit the space in the target whose names match the JSON files, or
