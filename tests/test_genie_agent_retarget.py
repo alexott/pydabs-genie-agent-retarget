@@ -72,6 +72,31 @@ def test_identity_mapping_is_noop():
     assert text("c.s.t", {"c.s": "C.S"}) == "c.s.t"
 
 
+# --- volume paths ----------------------------------------------------------
+
+def test_volume_path_follows_catalog_schema_and_volume_rules():
+    m = {"main": "dev", "main.gold": "dev.gold_v2", "main.intel.docs": "dev.intel.playbooks"}
+    assert text("/Volumes/main/gold/raw/", m) == "/Volumes/dev/gold_v2/raw/"
+    assert text("see /Volumes/main/intel/docs/a.md here", m) == "see /Volumes/dev/intel/playbooks/a.md here"
+    assert text("/Volumes/main/other/v", m) == "/Volumes/dev/other/v"
+    assert text("read_files('/Volumes/main/gold/raw/x/*.json')", m) == "read_files('/Volumes/dev/gold_v2/raw/x/*.json')"
+
+
+def test_volume_path_matching_is_case_insensitive_and_keeps_other_paths():
+    m = {"main.gold": "dev.gold_v2"}
+    assert text("/Volumes/MAIN/Gold/raw", m) == "/Volumes/dev/gold_v2/raw"
+    assert text("/Volumes/other/gold/raw/", m) == "/Volumes/other/gold/raw/"
+    assert text("/Volumes/main/gold", m) == "/Volumes/main/gold"            # no volume part
+    assert text("/mnt/Volumes/main/gold/raw", m) == "/mnt/Volumes/main/gold/raw"
+    assert text("/Volumes/my-cat/s/v", {"my-cat": "prod-cat"}) == "/Volumes/prod-cat/s/v"
+
+
+def test_volume_path_and_table_name_in_one_text():
+    m = {"main.gold": "dev.gold_v2"}
+    assert (text("COPY INTO main.gold.t FROM '/Volumes/main/gold/raw/'", m)
+            == "COPY INTO dev.gold_v2.t FROM '/Volumes/dev/gold_v2/raw/'")
+
+
 # --- whole space -----------------------------------------------------------
 
 def _space():
@@ -129,6 +154,15 @@ def test_short_qualifier_not_renamed_when_ambiguous_or_alias():
                                               "right": {"identifier": "c.a.v"}, "sql": ["t.id = v.id"]}]}}
     out, _ = gr.retarget_space(space, gr.parse_rules({"c.a.t": "c.a.u"}))
     assert out["instructions"]["join_specs"][0]["sql"] == ["t.id = v.id"]
+
+
+def test_space_volumes_are_rewritten_and_sorted():
+    space = {"data_sources": {"volumes": [{"path": "/Volumes/b/s/v/", "description": ["kept"]},
+                                          {"path": "/Volumes/z/s/v/"}]}}
+    out, renamed = gr.retarget_space(space, gr.parse_rules({"z.s": "a.s"}))
+    assert out["data_sources"]["volumes"] == [{"path": "/Volumes/a/s/v/"},
+                                              {"path": "/Volumes/b/s/v/", "description": ["kept"]}]
+    assert renamed == {}           # only table identifiers are reported
 
 
 def test_no_keys_added():

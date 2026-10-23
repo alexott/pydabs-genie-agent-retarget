@@ -2,10 +2,11 @@
 
 A serialized Genie space hardcodes fully-qualified names (catalog.schema.table)
 in many places: data source identifiers, join specs, SQL snippets, example and
-benchmark SQL, and free-form text instructions. This module rewrites them with
-prefix rules, from most to least specific:
+benchmark SQL, and free-form text instructions. Volume data sources and file paths
+use the same names as paths (/Volumes/catalog/schema/volume/...). This module
+rewrites both with prefix rules, from most to least specific:
 
-    catalog.schema.table -> catalog.schema.table   (exact table)
+    catalog.schema.table -> catalog.schema.table   (exact table or volume)
     catalog.schema       -> catalog.schema         (whole schema)
     catalog              -> catalog                (whole catalog)
 
@@ -52,6 +53,11 @@ MAPPING_VARIABLE = "genie_table_mapping"
 _PART = r"(?:`(?:[^`]|``)+`|[A-Za-z_]\w*)"
 # Up to 3 dot-separated parts that are not part of a longer dotted chain on the left.
 _NAME = re.compile(rf"(?<![\w.`])({_PART})(?:\.({_PART}))?(?:\.({_PART}))?")
+
+# A volume path: /Volumes/<catalog>/<schema>/<volume>, then the end, a "/", or a delimiter.
+# Paths have no backticks; a part ends at "/", a quote, a space, or SQL punctuation.
+_VPART = r"[^/\s'\"`(),;]+"
+_VOLUME = re.compile(rf"(?<![\w/])/Volumes/({_VPART})/({_VPART})/({_VPART})(?=[/\s'\"`),;]|$)")
 
 Rules = dict[tuple[str, ...], tuple[str, ...]]
 
@@ -102,11 +108,13 @@ def _quote(part: str) -> str:
 
 
 def retarget_text(text: str, rules: Rules) -> str:
-    """Rewrite every 3-part name in `text` that a rule matches, in a single pass.
+    """Rewrite every 3-part name and every volume path in `text` that a rule
+    matches, in a single pass.
 
     Longer chains such as `catalog.schema.table.column` are handled (the first
     three parts are the table). Quoting is preserved per part: if the source
-    part was backtick-quoted, the new part is quoted too."""
+    part was backtick-quoted, the new part is quoted too. A volume path
+    /Volumes/c/s/v/... is matched as the name c.s.v."""
     if not rules or not text:
         return text
 
@@ -119,7 +127,12 @@ def retarget_text(text: str, rules: Rules) -> str:
             return m.group(0)
         return ".".join(_quote(n) if r.startswith("`") else n for r, n in zip(raw, new))
 
-    return _NAME.sub(sub, text)
+    def vsub(m: re.Match) -> str:
+        new = map_name(m.groups(), rules)
+        return m.group(0) if new is None else "/Volumes/" + "/".join(new)
+
+    # Paths use "/" and names use ".", so the two passes never match the same text.
+    return _VOLUME.sub(vsub, _NAME.sub(sub, text))
 
 
 def _walk(node: Any, fn) -> Any:
@@ -160,6 +173,10 @@ def retarget_space(space: dict | str, rules: Rules) -> tuple[dict, dict[str, str
     for key, items in data_sources.items():
         if isinstance(items, list) and all(isinstance(i, dict) and "identifier" in i for i in items):
             items.sort(key=lambda i: i["identifier"])
+    # Volumes have a path, not an identifier; the API also wants them sorted.
+    volumes = data_sources.get("volumes")
+    if isinstance(volumes, list) and all(isinstance(v, dict) and "path" in v for v in volumes):
+        volumes.sort(key=lambda v: v["path"])
     return out, renamed
 
 
