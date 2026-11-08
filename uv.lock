@@ -13,11 +13,11 @@ wheels = [
 
 [[package]]
 name = "databricks-bundles"
-version = "1.23.0"
+version = "1.24.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f3/99/06979e3a92867759cb71331a48fc884057cc47fb3aa80aacf97cde5b2784/databricks_bundles-1.23.0.tar.gz", hash = "sha256:6c2198d1a98ad6d3ef385b2f9a00e5461fc14b62aaad74a082d6cf68281736ff", size = 264507, upload-time = "2026-10-29T12:12:49.415Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/07/2ed4088316d8adbd1927a555dd10332e27bfbde71450ba297572a38ef47d/databricks_bundles-1.24.0.tar.gz", hash = "sha256:e4448276ad548ff26fa2649462789c2c8abf20b349648e4ee787f8820dd4d999", size = 282366, upload-time = "2026-11-04T14:49:16.938Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/d8/37ec872cc291a3ae36d9f9141837e0387a3a7a7083c97fd595a4959abf95/databricks_bundles-1.23.0-py3-none-any.whl", hash = "sha256:ab8c6673fc8ddff47942fa5826e6872d1ae6b5de47e47556e905259f8d4e26e6", size = 675711, upload-time = "2026-10-29T12:12:48.035Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/bc/4bffd22ffeed65c876add0b69ded82b9d64441ebe9476f1f4d2c3fa96cbe/databricks_bundles-1.24.0-py3-none-any.whl", hash = "sha256:bf7f14a67867f654922a7f2cdf9b33c5c317dc85d4f9825f1836b6e2312fb665", size = 723695, upload-time = "2026-11-04T14:49:15.177Z" },
 ]
 
 [[package]]
